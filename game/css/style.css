@@ -126,6 +126,11 @@ html, body {
 .bubble #questionText { margin: 0; }
 .bubble.pop { animation: pop .3s ease-out; }
 @keyframes pop { from { transform: scale(.94); opacity: .3; } }
+.room-intro #introGreet { margin: 0; font-size: clamp(18px, 2vw, 22px); }
+.room-intro .intro-hint { margin: 10px 0 0; font-size: 15px; font-weight: 600; color: #555; }
+.room-intro .big-btn { margin: 16px auto 0; } /* centred, away from where the arrow pad was */
+/* buttons that just appeared ignore taps for a moment (stops a held arrow tap from "clicking" them) */
+.arming { pointer-events: none; opacity: .55; filter: grayscale(.4); }
 .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ans {
   display: flex; align-items: center; gap: 14px; text-align: left; min-height: 104px;

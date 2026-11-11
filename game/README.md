@@ -10,7 +10,7 @@ To share it, copy or upload the whole `game` folder. It also works on any static
 - **Answer:** Click or tap an answer button, or press 1–4
 
 ## Rules
-- Red starts with **SGD 2,000** for Grandma.
+- Red starts with **SGD 2,000** (set by `START_MONEY` at the top of `js/game.js`) for Grandma.
 - The maze has 8 rooms, and each room's wolf asks questions from that room's CSV only.
 - Answer 1 ("don't know"): no money is lost. Red sees the safe choice and gets a new question.
 - Answer 2 (correct): the room is cleared and the path opens.

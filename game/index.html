@@ -17,7 +17,7 @@
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div class="hud-chip wallet" id="wallet">
-    <span class="coin"></span><span class="lbl">SGD</span><span id="walletAmt">5,000</span>
+    <span class="coin"></span><span class="lbl">SGD</span><span id="walletAmt">2,000</span>
     <span id="walletDelta" class="delta"></span>
   </div>
   <div class="hud-chip progress">
@@ -47,7 +47,7 @@
       </div>
       <div class="intro-text">
         <p class="speaker">THE WOODCUTTER</p>
-        <p>Hello, <b>Red</b>! Your <b>real Grandma</b> lives at the end of the Digital Maze, and you are bringing her <b class="money">SGD 2,000</b>.</p>
+        <p>Hello, <b>Red</b>! Your <b>real Grandma</b> lives at the end of the Digital Maze, and you are bringing her <b class="money">SGD <span class="start-money">2,000</span></b>.</p>
         <p>But be careful. <b>8 wolves in disguise</b> are hiding in rooms along the path. Each one will try to scam you.</p>
         <p>Choose wisely. Every time you get scammed, money is taken from your wallet. Only a <b>safe choice</b> lets you through a room.</p>
         <ul class="controls">
@@ -73,7 +73,13 @@
     <div class="room-main">
       <div class="wolf-box"><img id="wolfImg" alt=""></div>
       <div class="dialog">
-        <div class="bubble">
+        <div id="roomIntro" class="bubble room-intro hidden">
+          <p class="speaker" id="introName">DOCTOR WOLF</p>
+          <p id="introGreet"></p>
+          <p class="intro-hint">Read each question carefully before you choose.</p>
+          <button class="big-btn" id="talkBtn">I'M READY ▶</button>
+        </div>
+        <div class="bubble" id="qBubble">
           <p class="speaker" id="wolfName">DOCTOR WOLF</p>
           <p id="questionText"></p>
         </div>
@@ -115,7 +121,7 @@
 <section id="over" class="screen hidden">
   <div class="panel over-panel">
     <h1 class="title small bad">OUT OF MONEY!</h1>
-    <p>The wolves scammed away all of Grandma's <b>SGD 5,000</b>.</p>
+    <p>The wolves scammed away all of Grandma's <b>SGD <span class="start-money">2,000</span></b>.</p>
     <p>Scammers rush you, scare you, or promise you something too good to be true. When in doubt: <b>Stop. Check. Tell a trusted adult.</b></p>
     <button class="big-btn" id="retryBtn">TRY AGAIN ↻</button>
   </div>

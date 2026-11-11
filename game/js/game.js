@@ -3,7 +3,7 @@
 'use strict';
 
 const $ = (s) => document.querySelector(s);
-const START_MONEY = 2000;
+const START_MONEY = 2000; // change this one number to change the starting money everywhere
 // Questions whose "Scam Value" is N/A (personal info, safety, bullying) still cost something:
 const INFO_LOSS_FULL = 300;   // Answer 4 (totally scammed)
 const INFO_LOSS_PART = 100;   // Answer 3 (scammed a bit)
@@ -34,6 +34,26 @@ const ROOMS = [
     roof: '#c62828', dark: '#7f0000', accent: '#ffe0b2', floor: '#fbe5df',
     tip: 'Voices, photos and accounts can be faked. Always check by calling the person on the number you already know.' },
 ];
+
+// What each wolf says when Red walks in (shown before any question, with an "I'm ready" button)
+const GREETS = [
+  "Hold it right there! I'm a doctor, and I have some URGENT news for you…",
+  "Congratulations, lucky winner! Step right up, I have an amazing prize for you…",
+  "Hey! Wanna be best friends? I just need to ask you something first…",
+  "Psst… you're pretty cool, you know that? Let's chat, just you and me…",
+  "Welcome to Cyber Space. Let's see how you handle what happens online…",
+  "Good day! There seems to be a small problem with your account…",
+  "Stop right there! This is the police. We need to talk…",
+  "Oh my dear, it's me, your Grandma! Come closer, I need a little favour…",
+];
+const ARM_MS = 650; // newly shown buttons ignore taps for this long (prevents tap-through on mobile)
+let armUntil = 0;
+function arm(el) {
+  armUntil = performance.now() + ARM_MS;
+  el.classList.add('arming');
+  clearTimeout(el._armT); el._armT = setTimeout(() => el.classList.remove('arming'), ARM_MS);
+}
+const armed = () => performance.now() >= armUntil;
 
 const GOOD_LINES = ['Scam busted!', 'Great thinking, Red!', 'You saw right through the disguise!', 'Wolf foiled!'];
 const IDK_LINES = [
@@ -220,10 +240,14 @@ function setPadOn(dir, on) { const b = document.querySelector(`#dpad [data-dir=$
 window.addEventListener('keydown', (e) => {
   if (S.mode === 'maze' && KEYMAP[e.key]) { e.preventDefault(); press(KEYMAP[e.key]); return; }
   if (S.mode === 'room') {
+    if (e.repeat || !armed()) { e.preventDefault(); return; }
+    const visible = (id) => !$(id).classList.contains('hidden');
     const n = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3 }[e.key.toLowerCase()];
     const btns = document.querySelectorAll('#answers .ans');
-    if (n !== undefined && btns[n] && !btns[n].disabled && $('#result').classList.contains('hidden')) { btns[n].click(); e.preventDefault(); }
-    else if ((e.key === 'Enter' || e.key === ' ') && !$('#result').classList.contains('hidden')) { $('#resultBtn').click(); e.preventDefault(); }
+    const go = e.key === 'Enter' || e.key === ' ';
+    if (go && visible('#roomIntro')) { $('#talkBtn').click(); e.preventDefault(); }
+    else if (n !== undefined && visible('#answers') && btns[n] && !btns[n].disabled) { btns[n].click(); e.preventDefault(); }
+    else if (go && visible('#result')) { $('#resultBtn').click(); e.preventDefault(); }
   }
 });
 window.addEventListener('keyup', (e) => { if (KEYMAP[e.key]) release(KEYMAP[e.key]); });
@@ -304,8 +328,19 @@ function enterRoom(r) {
   $('#wolfName').textContent = R.wolf.toUpperCase() + ' SAYS:';
   $('#room').classList.remove('hidden'); $('#dpad').classList.add('hidden');
   $('#room').scrollTop = 0;
-  nextQuestion();
+  // Step 1: the wolf greets Red. Questions only appear after the player taps "I'm ready".
+  $('#introName').textContent = R.wolf.toUpperCase() + ':';
+  $('#introGreet').textContent = GREETS[r.idx];
+  ['#qBubble', '#answers', '#result'].forEach((s) => $(s).classList.add('hidden'));
+  $('#roomIntro').classList.remove('hidden');
+  arm($('#talkBtn'));
 }
+
+$('#talkBtn').addEventListener('click', () => {
+  if (!armed() || S.mode !== 'room') return;
+  $('#roomIntro').classList.add('hidden'); $('#qBubble').classList.remove('hidden');
+  nextQuestion();
+});
 
 function drawQuestion(roomIdx) {
   let deck = S.decks[roomIdx];
@@ -319,8 +354,9 @@ function nextQuestion() {
   let order; do { order = shuffle([0, 1, 2, 3]); } while (order[0] === 0 && order[3] === 3);
   S.order = order;
   $('#questionText').textContent = q.q;
-  const b = document.querySelector('.bubble'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+  const b = $('#qBubble'); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
   const box = $('#answers'); box.innerHTML = ''; box.classList.remove('hidden'); $('#result').classList.add('hidden');
+  arm(box);
   order.forEach((ai, slot) => {
     const btn = document.createElement('button'); btn.className = 'ans'; btn.type = 'button';
     btn.innerHTML = `<span class="key">${'ABCD'[slot]}</span><span class="txt"></span>`;
@@ -343,6 +379,7 @@ function lossFor(q, ai) {
 }
 
 function choose(ai) {
+  if (!armed() || !$('#result').classList.contains('hidden')) return;
   document.querySelectorAll('#answers .ans').forEach((b) => { b.disabled = true; });
   const q = S.current, R = ROOMS[S.roomIdx], st = S.stats[S.roomIdx];
   st.tries++;
@@ -385,11 +422,13 @@ function choose(ai) {
   if (S.money <= 0) $('#resultBtn').textContent = 'CONTINUE ▶';
   res.dataset.outcome = ai;
   $('#answers').classList.add('hidden'); res.classList.remove('hidden');
+  arm($('#resultBtn'));
   res.scrollIntoView({ block: 'nearest' });
   $('#resultBtn').focus({ preventScroll: true });
 }
 
 $('#resultBtn').addEventListener('click', () => {
+  if (!armed()) return;
   const ai = +$('#result').dataset.outcome;
   if (S.money <= 0) { gameOver(); return; }
   if (ai === 1) leaveRoom(); else nextQuestion();
@@ -414,7 +453,7 @@ function finishGame() {
   $('#endMsg').innerHTML = lost === 0
     ? `Oh Red, you made it with the full <b>SGD ${fmt(S.money)}</b>! Not a single wolf fooled you. I'm so proud of you!`
     : `Thank you, Red! You brought me <b>SGD ${fmt(S.money)}</b>. The wolves scammed away <b>SGD ${fmt(lost)}</b> on the way, so remember the tips below next time!`;
-  const stars = S.money >= 4500 ? 3 : S.money >= 3000 ? 2 : 1;
+  const stars = S.money >= START_MONEY * 0.9 ? 3 : S.money >= START_MONEY * 0.5 ? 2 : 1;
   $('#stars').innerHTML = [1, 2, 3].map((n) => `<span class="${n <= stars ? 'on' : ''}">★</span>`).join('');
   let rows = '<tr><th>ROOM</th><th>SCAM</th><th>TRIES</th><th>LOST</th></tr>';
   ROOMS.forEach((R, i) => { const s = S.stats[i]; rows += `<tr><td>${i + 1}. ${R.name}</td><td>${R.scam}</td><td class="num">${s.tries}</td><td class="num">SGD ${fmt(s.lost)}</td></tr>`; });
@@ -555,6 +594,7 @@ function drawPoof(r, now) {
 if (!window.QUESTION_BANK || window.QUESTION_BANK.length !== 8) {
   $('#startBtn').textContent = 'QUESTIONS MISSING'; return;
 }
+document.querySelectorAll(".start-money").forEach((el) => { el.textContent = fmt(START_MONEY); });
 resetGame();
 requestAnimationFrame(frame);
 loadImages().then(() => { const b = $('#startBtn'); b.disabled = false; b.textContent = 'START JOURNEY ▶'; });
