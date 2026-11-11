@@ -3,7 +3,7 @@
 'use strict';
 
 const $ = (s) => document.querySelector(s);
-const START_MONEY = 5000;
+const START_MONEY = 2000;
 // Questions whose "Scam Value" is N/A (personal info, safety, bullying) still cost something:
 const INFO_LOSS_FULL = 300;   // Answer 4 (totally scammed)
 const INFO_LOSS_PART = 100;   // Answer 3 (scammed a bit)
