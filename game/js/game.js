@@ -9,10 +9,10 @@ const INFO_LOSS_FULL = 300;   // Answer 4 (totally scammed)
 const INFO_LOSS_PART = 100;   // Answer 3 (scammed a bit)
 
 const ROOMS = [
-  { name: 'Hospital Ward', wolf: 'Doctor Wolf', scam: 'Urgency Scam', img: 'wolf1',
+  { name: 'Hospital', wolf: 'Doctor Wolf', scam: 'Urgency Scam', img: 'wolf1',
     roof: '#26c6da', dark: '#00838f', accent: '#e53935', floor: '#d9f5f7',
     tip: 'Scammers create panic so you act fast. Stop, never pay, and check with a trusted adult using a phone number you already know.' },
-  { name: 'Prize Show', wolf: 'Prize Wolf', scam: 'Prize Scam', img: 'wolf2',
+  { name: 'Prize Centre', wolf: 'Prize Wolf', scam: 'Prize Scam', img: 'wolf2',
     roof: '#8e24aa', dark: '#4a148c', accent: '#ffd600', floor: '#f1e2f5',
     tip: "If you never entered, you didn't win. Real prizes never ask you to pay a fee or share personal details first." },
   { name: 'Playground', wolf: 'Schoolboy Wolf', scam: 'Online Friend Scam', img: 'wolf3',
@@ -21,16 +21,16 @@ const ROOMS = [
   { name: 'Arcade', wolf: 'Cool Wolf', scam: 'Predatory Danger', img: 'wolf4',
     roof: '#ec407a', dark: '#ad1457', accent: '#40c4ff', floor: '#fbe1ea',
     tip: 'Gifts with secrets, "come alone", private chats and photo requests are danger signs. Say no, block, and tell a trusted adult.' },
-  { name: 'Cyber Space', wolf: 'Cyber Wolf', scam: 'Cyberbullying', img: 'wolf5',
+  { name: 'Cybercafe', wolf: 'Cyber Wolf', scam: 'Cyberbullying', img: 'wolf5',
     roof: '#3949ab', dark: '#0d1b4c', accent: '#00e5ff', floor: '#1c2566',
     tip: "Don't join in and don't fight back. Screenshot, block, report, and tell a trusted adult." },
   { name: 'Bank', wolf: 'Banker Wolf', scam: 'Phishing Scam', img: 'wolf6',
     roof: '#8d6e63', dark: '#4e342e', accent: '#ffca28', floor: '#eee6e2',
     tip: 'Banks never ask for your PIN, OTP or password, and never send clickable links by SMS. Never share them.' },
-  { name: 'Police Centre', wolf: 'Police Wolf', scam: 'Authority Scam', img: 'wolf7',
+  { name: 'Police Station', wolf: 'Police Wolf', scam: 'Authority Scam', img: 'wolf7',
     roof: '#1e88e5', dark: '#0d47a1', accent: '#ffffff', floor: '#deeefc',
     tip: 'Real police and officials never ask for money over the phone. Hang up and call the 1799 Anti-Scam Helpline with an adult.' },
-  { name: "Grandma's Room", wolf: '"Grandma"', scam: 'Impersonation Scam', img: 'wolf8',
+  { name: "Grandma's House", wolf: '"Grandma"', scam: 'Impersonation Scam', img: 'wolf8',
     roof: '#c62828', dark: '#7f0000', accent: '#ffe0b2', floor: '#fbe5df',
     tip: 'Voices, photos and accounts can be faked. Always check by calling the person on the number you already know.' },
 ];
@@ -41,7 +41,7 @@ const GREETS = [
   "Congratulations, lucky winner! Step right up, I have an amazing prize for you…",
   "Hey! Wanna be best friends? I just need to ask you something first…",
   "Psst… you're pretty cool, you know that? Let's chat, just you and me…",
-  "Welcome to Cyber Space. Let's see how you handle what happens online…",
+  "Welcome to the Cybercafe! Grab a seat, let's see how you handle what happens online…",
   "Good day! There seems to be a small problem with your account…",
   "Stop right there! This is the police. We need to talk…",
   "Oh my dear, it's me, your Grandma! Come closer, I need a little favour…",
@@ -68,10 +68,11 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const fmt = (n) => n.toLocaleString('en-SG');
 
 // ---------------------------------------------------------------- maze
-// Main route is drawn through these corners; rooms are spaced evenly along it so that
-// no stretch between Start → Room 1 → … → Room 8 → Grandma is longer than 20 steps.
-const MW = 31, MH = 23, WALL = 0, PATH = 1, T = 32;
-const WAYPOINTS = [[1,1],[9,1],[9,5],[3,5],[3,9],[11,9],[11,3],[17,3],[17,1],[25,1],[25,5],[29,5],[29,11],[19,11],[19,7],[15,7],[15,13],[5,13],[5,17],[1,17],[1,21],[11,21],[11,17],[17,17],[17,21],[23,21],[23,15],[29,15],[29,21]];
+// Main route is drawn through these corners. Rooms are placed along it so that no stretch
+// between Start → Room 1 → … → Room 8 → Grandma is longer than MAX_LEG steps.
+const MAX_LEG = 15;
+const MW = 23, MH = 17, WALL = 0, PATH = 1, T = 32;
+const WAYPOINTS = [[1,1],[9,1],[9,3],[15,3],[15,1],[21,1],[21,5],[11,5],[11,7],[1,7],[1,11],[9,11],[9,9],[15,9],[15,13],[3,13],[3,15],[17,15],[17,11],[21,11],[21,15]];
 const grid = Array.from({ length: MH }, () => new Array(MW).fill(WALL));
 const key = (x, y) => y * MW + x;
 const isWall = (x, y) => x < 0 || y < 0 || x >= MW || y >= MH || grid[y][x] === WALL;
@@ -86,16 +87,32 @@ mainPath.forEach(([x, y]) => { grid[y][x] = PATH; });
 const L = mainPath.length - 1;
 const START = { x: mainPath[0][0], y: mainPath[0][1] };
 const GOAL = { x: mainPath[L][0], y: mainPath[L][1] };
+// Rooms sit on straight east-west stretches (so each building backs onto hedge), spaced as
+// evenly as possible while keeping every leg ≤ MAX_LEG.
 const rooms = [];
-for (let k = 1; k <= 8; k++) { const [x, y] = mainPath[Math.round(k * L / 9)]; rooms.push({ x, y, idx: k - 1, cleared: false, poof: 0 }); }
+(function placeRooms() {
+  const straight = (i) => i > 0 && i < L && mainPath[i - 1][1] === mainPath[i][1] && mainPath[i + 1][1] === mainPath[i][1];
+  let prev = 0;
+  for (let k = 1; k <= 8; k++) {
+    const target = prev + (L - prev) / (10 - k); let best = -1;
+    for (let i = prev + 1; i <= Math.min(prev + MAX_LEG, L - 1); i++) {
+      if (!straight(i) || L - i > (9 - k) * MAX_LEG) continue;
+      if (best < 0 || Math.abs(i - target) < Math.abs(best - target)) best = i;
+    }
+    if (best < 0) throw new Error('Maze route too long for MAX_LEG');
+    rooms.push({ x: mainPath[best][0], y: mainPath[best][1], idx: k - 1, cleared: false, poof: 0 }); prev = best;
+  }
+})();
 const roomAt = new Map(rooms.map((r) => [key(r.x, r.y), r]));
 
 // A few short dead-end branches so it feels like a real hedge maze (they never create shortcuts).
 (function growBranches() {
   const rnd = mulberry32(20261111);
   const protect = new Set([key(START.x, START.y), key(GOAL.x, GOAL.y), ...rooms.map((r) => key(r.x, r.y))]);
+  // keep the hedge around each building untouched so the art never covers a path
+  const nearStop = (x, y) => [...rooms, GOAL].some((r) => Math.abs(r.x - x) <= 1 && Math.abs(r.y - y) <= 1);
   const origins = mainPath.filter(([x, y]) => x % 2 && y % 2 && !protect.has(key(x, y)));
-  for (let n = 0; n < 26; n++) {
+  for (let n = 0; n < 22; n++) {
     let [cx, cy] = origins[Math.floor(rnd() * origins.length)];
     const len = 1 + Math.floor(rnd() * 3);
     for (let s = 0; s < len; s++) {
@@ -103,6 +120,7 @@ const roomAt = new Map(rooms.map((r) => [key(r.x, r.y), r]));
       for (const [dx, dy] of shuffle([[1,0],[-1,0],[0,1],[0,-1]], rnd)) {
         const tx = cx + 2 * dx, ty = cy + 2 * dy;
         if (tx < 1 || ty < 1 || tx > MW - 2 || ty > MH - 2 || grid[ty][tx] !== WALL) continue;
+        if (nearStop(cx + dx, cy + dy) || nearStop(tx, ty)) continue;
         grid[cy + dy][cx + dx] = PATH; grid[ty][tx] = PATH; cx = tx; cy = ty; moved = true; break;
       }
       if (!moved) break;
@@ -131,7 +149,7 @@ function distance(fx, fy, tx, ty) {
     legs.push(distance(stops[i].x, stops[i].y, stops[i + 1].x, stops[i + 1].y));
     rooms.forEach((r, j) => { r.cleared = saved[j]; });
   }
-  console.log('[maze] steps per leg (must be ≤ 20):', legs.join(', '));
+  console.log(`[maze] steps per leg (must be ≤ ${MAX_LEG}):`, legs.join(', '));
 })();
 
 // ---------------------------------------------------------------- assets
@@ -483,45 +501,152 @@ function drawSprite(im, cx, bottom, h, flip = false) {
 }
 function shadow(cx, cy, rw) { ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(cx, cy, rw, rw * 0.38, 0, 0, Math.PI * 2); ctx.fill(); }
 
-function drawGate(r, now) {
-  const R = ROOMS[r.idx]; const ox = r.x * T, oy = r.y * T;
-  ctx.save(); ctx.translate(ox, oy);
-  ctx.fillStyle = R.floor; ctx.fillRect(0, 0, T, T);
-  if (!r.cleared) {
-    ctx.globalAlpha = 0.6 + 0.25 * Math.sin(now / 280 + r.idx);
-    ctx.fillStyle = R.roof; ctx.fillRect(6, 9, 20, 23); ctx.globalAlpha = 1;
-    ctx.fillStyle = 'rgba(255,255,255,.3)';
-    const off = Math.floor(now / 90) % 4; for (let yy = 9 + off; yy < 32; yy += 4) ctx.fillRect(6, yy, 20, 1);
-  } else {
-    ctx.fillStyle = 'rgba(47,191,113,.25)'; ctx.fillRect(6, 9, 20, 23);
-  }
-  ctx.fillStyle = R.dark; ctx.fillRect(0, 7, 6, 25); ctx.fillRect(26, 7, 6, 25);
-  ctx.fillStyle = R.roof; ctx.fillRect(1, 8, 3, 24); ctx.fillRect(27, 8, 3, 24);
-  ctx.fillStyle = R.dark; ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(16, -10); ctx.lineTo(36, 6); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = R.roof; ctx.beginPath(); ctx.moveTo(0, 5); ctx.lineTo(16, -7); ctx.lineTo(32, 5); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = R.dark; ctx.fillRect(-4, 5, 40, 4);
-  // number sign
-  // number sign floats above the roof so the wolf never hides it
-  const sy = -24 + Math.round(Math.sin(now / 350 + r.idx));
-  ctx.fillStyle = '#000'; ctx.fillRect(9, sy, 14, 12);
-  ctx.fillStyle = r.cleared ? '#2fbf71' : R.accent; ctx.fillRect(10, sy + 1, 12, 10);
-  ctx.fillStyle = r.cleared ? '#fff' : '#1b1530';
-  ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(r.cleared ? '✓' : String(r.idx + 1), 16, sy + 6.5);
+// ---- pixel-art buildings: each stop is drawn as the real place (48×48 art units, 1.5 tiles),
+// standing on its tile with the door at the bottom centre where the wolf waits.
+const P = {
+  r(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); },
+  tri(x1, y1, x2, y2, x3, y3, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.closePath(); ctx.fill(); },
+  circ(x, y, rad, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill(); },
+  txt(s, x, y, c, size = 5) { ctx.fillStyle = c; ctx.font = `${size}px "Press Start 2P", monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y + 0.5); },
+};
+const blink = (now, ms, phase = 0) => Math.floor(now / ms + phase) % 2 === 0;
+
+const BUILDINGS = [
+  // 1. Hospital
+  (now) => {
+    P.r(4, 12, 40, 36, '#f4f7fa'); P.r(3, 11, 42, 1, '#90a4ae'); P.r(3, 12, 1, 36, '#90a4ae'); P.r(44, 12, 1, 36, '#90a4ae');
+    P.r(3, 9, 42, 3, '#26c6da'); P.r(3, 12, 42, 1, '#00838f');
+    P.r(14, 0, 20, 10, '#ffffff'); P.r(13, 0, 1, 10, '#b0bec5'); P.r(34, 0, 1, 10, '#b0bec5'); P.r(13, 0, 22, 1, '#b0bec5');
+    P.r(21, 1, 6, 8, '#e53935'); P.r(18, 3, 12, 4, '#e53935');                          // red cross
+    for (const y of [15, 24]) for (const x of [7, 15, 27, 35]) { P.r(x, y, 6, 6, '#4fc3f7'); P.r(x, y, 6, 1, '#b3e5fc'); P.r(x + 2, y + 2, 1, 1, '#e1f5fe'); }
+    P.r(14, 33, 20, 3, '#e53935'); P.r(14, 36, 20, 1, '#b71c1c');                        // awning
+    P.r(17, 37, 14, 11, '#81d4fa'); P.r(24, 37, 1, 11, '#0277bd'); P.r(17, 37, 14, 1, '#0277bd');
+    P.r(6, 36, 8, 6, '#c8e6c9'); P.r(7, 37, 6, 1, '#2e7d32'); P.txt('ER', 10, 39.5, '#e53935', 3);
+  },
+  // 2. Prize Centre (wheel of fortune)
+  (now) => {
+    P.r(2, 30, 44, 18, '#4a148c'); P.r(2, 30, 44, 3, '#ffd600');
+    for (let i = 0; i < 11; i++) P.r(3 + i * 4, 31, 2, 1, blink(now, 250, i * 0.5) ? '#fff' : '#ff6f00');
+    P.r(4, 33, 11, 15, '#8e24aa'); P.r(33, 33, 11, 15, '#8e24aa');
+    for (let i = 0; i < 3; i++) { P.r(6 + i * 3, 33, 1, 15, '#6a1b9a'); P.r(35 + i * 3, 33, 1, 15, '#6a1b9a'); }
+    P.r(15, 33, 18, 15, '#1a0033');
+    // spinning wheel
+    const cx = 24, cy = 14, rad = 12, cols = ['#e53935', '#ffd600', '#1e88e5', '#43a047'], spin = now / 700;
+    P.circ(cx, cy, rad + 2, '#ffb300');
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = cols[i % 4]; ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, rad, spin + (i * Math.PI) / 4, spin + ((i + 1) * Math.PI) / 4); ctx.closePath(); ctx.fill();
+    }
+    for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; P.r(Math.round(cx + Math.cos(a) * 13) - 1, Math.round(cy + Math.sin(a) * 13) - 1, 2, 2, blink(now, 200, i) ? '#fff' : '#ff6f00'); }
+    P.circ(cx, cy, 2.5, '#fff'); P.tri(21, -1, 27, -1, 24, 4, '#e53935');
+    // "WIN!" signs on the curtains, clear of the wolf standing in the doorway
+    for (const sx of [3, 33]) { P.r(sx, 37, 12, 7, '#ffd600'); P.r(sx, 37, 12, 1, '#fff59d'); P.txt('WIN', sx + 6, 40.5, '#4a148c', 3); }
+  },
+  // 3. Playground
+  (now) => {
+    P.r(0, 38, 48, 10, '#f2d7a0'); for (let i = 0; i < 14; i++) P.r((i * 7) % 46 + 1, 40 + (i * 3) % 7, 1, 1, '#d9b779');
+    P.r(6, 18, 2, 28, '#8d6e63'); P.r(18, 18, 2, 28, '#8d6e63'); P.r(5, 28, 16, 3, '#a1887f'); P.r(5, 31, 16, 1, '#6d4c41');
+    for (let i = 0; i < 4; i++) P.r(8, 33 + i * 3, 10, 1, '#6d4c41');                   // ladder
+    P.tri(3, 19, 13, 8, 23, 19, '#e65100'); P.tri(6, 18, 13, 11, 20, 18, '#fb8c00');    // roof
+    P.r(13, 2, 1, 7, '#555'); P.r(14, 2, 5, 3, blink(now, 400) ? '#e53935' : '#ef5350');
+    ctx.fillStyle = '#f9a825'; ctx.beginPath(); ctx.moveTo(20, 28); ctx.lineTo(24, 28); ctx.lineTo(34, 45); ctx.lineTo(29, 45); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fdd835'; ctx.beginPath(); ctx.moveTo(21, 28); ctx.lineTo(23, 28); ctx.lineTo(33, 44); ctx.lineTo(31, 44); ctx.closePath(); ctx.fill();
+    P.r(32, 16, 14, 2, '#1e88e5'); P.r(32, 16, 2, 30, '#1565c0'); P.r(44, 16, 2, 30, '#1565c0');   // swing set
+    const sw = Math.round(Math.sin(now / 450) * 2);
+    P.r(37 + sw, 18, 1, 14, '#9e9e9e'); P.r(41 + sw, 18, 1, 14, '#9e9e9e'); P.r(36 + sw, 32, 7, 2, '#e53935');
+  },
+  // 4. Arcade
+  (now) => {
+    P.r(3, 14, 42, 34, '#2a1b3d'); P.r(3, 14, 42, 2, '#40c4ff');
+    const neon = blink(now, 900) || blink(now, 130) ? '#ff4fa3' : '#7a2450';
+    P.r(4, 2, 40, 11, '#140b22'); P.r(4, 2, 40, 1, neon); P.r(4, 12, 40, 1, neon); P.r(4, 2, 1, 11, neon); P.r(43, 2, 1, 11, neon);
+    P.txt('ARCADE', 24, 7.5, '#40c4ff', 5);
+    for (const wx of [6, 32]) {
+      P.r(wx, 19, 10, 15, '#0d0d1a'); P.r(wx + 2, 22, 6, 12, '#ec407a'); P.r(wx + 3, 23, 4, 3, ['#40c4ff', '#ffd600', '#69f0ae'][Math.floor(now / 300 + wx) % 3]);
+      P.r(wx + 3, 28, 1, 1, '#fff'); P.r(wx + 5, 28, 1, 1, '#ffd600');
+    }
+    P.r(18, 28, 12, 20, neon); P.r(19, 29, 10, 19, '#3d2357'); P.r(23, 29, 1, 19, '#2a1b3d');
+    for (let i = 0; i < 6; i++) P.r(4 + i * 8, 16, 2, 2, blink(now, 300, i) ? '#ffd600' : '#5c4a00');
+  },
+  // 5. Cybercafe
+  (now) => {
+    P.r(3, 14, 42, 34, '#1b2a4a');
+    for (let i = 0; i < 7; i++) P.r(3 + i * 6, 14, 6, 4, i % 2 ? '#0a1530' : '#00e5ff');  // awning
+    P.r(6, 1, 30, 12, '#0a0f24'); P.r(6, 1, 30, 1, '#00e5ff'); P.r(6, 12, 30, 1, '#00e5ff'); P.r(6, 1, 1, 12, '#00e5ff'); P.r(35, 1, 1, 12, '#00e5ff');
+    P.txt('CYBER', 21, 5, '#00e5ff', 4); P.txt('CAFE', 21, 10, '#b388ff', 4);
+    P.r(38, 6, 5, 5, '#fff'); P.r(43, 7, 1, 3, '#fff'); P.r(39, 7, 3, 2, '#6d4c41');     // coffee cup
+    if (blink(now, 500)) { P.r(39, 3, 1, 2, '#cfd8dc'); P.r(41, 2, 1, 2, '#cfd8dc'); }
+    for (const wx of [5, 31]) {
+      P.r(wx, 21, 12, 15, '#0d1b3a'); P.r(wx, 33, 12, 2, '#5d4037');
+      for (const m of [0, 6]) { P.r(wx + 1 + m, 25, 5, 4, blink(now, 700, m + wx) ? '#00e5ff' : '#7c4dff'); P.r(wx + 3 + m, 29, 1, 4, '#90a4ae'); }
+    }
+    P.r(18, 26, 12, 22, '#00e5ff'); P.r(19, 27, 10, 21, '#0d1b3a'); P.r(19, 27, 10, 3, '#12305e');
+  },
+  // 6. Bank
+  (now) => {
+    P.r(2, 44, 44, 4, '#a89f8e'); P.r(4, 42, 40, 2, '#c5bdad');
+    P.r(6, 20, 36, 22, '#efe6d2');
+    P.tri(2, 20, 24, 4, 46, 20, '#8d7b5a'); P.tri(6, 19, 24, 7, 42, 19, '#e8dcc0');
+    P.r(3, 18, 42, 4, '#d4c4a0');
+    P.circ(24, 10, 3.5, '#ffca28'); P.circ(24, 10, 2.6, '#ffd54f'); P.txt('$', 24, 10, '#8d6e00', 3);
+    P.txt('BANK', 24, 15.5, '#5d4037', 3);
+    for (const x of [8, 15, 30, 37]) { P.r(x - 1, 22, 6, 2, '#d4c4a0'); P.r(x, 24, 4, 16, '#fffaf0'); P.r(x + 3, 24, 1, 16, '#d8cfbd'); P.r(x - 1, 40, 6, 2, '#d4c4a0'); }
+    P.r(20, 27, 8, 15, '#5d4037'); P.r(24, 27, 1, 15, '#3e2723'); P.r(22, 34, 1, 1, '#ffca28'); P.r(25, 34, 1, 1, '#ffca28');
+  },
+  // 7. Police Station
+  (now) => {
+    P.r(3, 14, 42, 34, '#1e4fa3'); P.r(2, 11, 44, 3, '#0d47a1');
+    P.r(7, 1, 34, 10, '#ffffff'); P.r(7, 1, 34, 1, '#cfd8dc'); P.txt('POLICE', 24, 6, '#0d47a1', 4);   // rooftop sign
+    const on = blink(now, 220);                                                        // flashing lights either side
+    P.r(1, 5, 5, 6, on ? '#ff1744' : '#7f0000'); P.r(42, 5, 5, 6, on ? '#0d47a1' : '#2979ff');
+    ctx.globalAlpha = 0.25; if (on) P.circ(3.5, 8, 7, '#ff1744'); else P.circ(44.5, 8, 7, '#2979ff'); ctx.globalAlpha = 1;
+    for (let i = 0; i < 14; i++) P.r(3 + i * 3, 16, 3, 3, i % 2 ? '#ffffff' : '#0d2b66');   // chequered band
+    P.r(14, 21, 20, 6, '#16408a'); P.circ(24, 24, 2.5, '#ffd600'); P.circ(24, 24, 1.2, '#1e4fa3');  // badge
+    for (const wx of [6, 33]) { P.r(wx, 31, 9, 8, '#90caf9'); P.r(wx, 31, 9, 1, '#e3f2fd'); P.r(wx + 4, 31, 1, 8, '#1e4fa3'); }
+    P.r(19, 31, 10, 17, '#0d2b66'); P.r(23, 31, 1, 17, '#06173a'); P.r(22, 29, 4, 2, '#4fc3f7');
+  },
+  // 8. "Grandma's" house (the fake one: dim windows, glowing eyes, a wolf tail out the back)
+  (now) => {
+    const wag = Math.round(Math.sin(now / 160) * 1.5);
+    P.r(42, 35 + wag, 4, 3, '#90a4ae'); P.r(44, 33 + wag, 3, 3, '#b0bec5'); P.r(46, 32 + wag, 2, 2, '#eceff1');
+    P.r(6, 22, 36, 26, '#cdb592'); P.r(6, 22, 2, 26, '#7b5a44'); P.r(40, 22, 2, 26, '#7b5a44'); P.r(6, 33, 36, 1, '#7b5a44');
+    P.r(33, 4, 5, 12, '#5d4037');
+    const puff = (now / 60) % 20; ctx.globalAlpha = 0.6 * (1 - puff / 20); P.circ(36 + puff / 4, 2 - puff / 2, 2 + puff / 8, '#9575cd'); ctx.globalAlpha = 1;
+    P.tri(1, 24, 24, 4, 47, 24, '#4a1010'); P.tri(5, 23, 24, 7, 43, 23, '#7b1f1f');
+    for (let i = 0; i < 3; i++) P.r(10 + i * 4, 14 + i * 3, 28 - i * 8, 1, '#5a1414');
+    for (const wx of [10, 30]) {
+      P.r(wx, 26, 8, 6, '#2b1d0e'); P.r(wx + 3, 26, 1, 6, '#7b5a44'); P.r(wx, 28, 8, 1, '#7b5a44');
+      P.r(wx - 1, 32, 10, 2, '#6d4c41'); P.r(wx, 31, 2, 1, '#ff8fb1'); P.r(wx + 4, 31, 2, 1, '#ce93d8');
+    }
+    if (!blink(now, 1700) || blink(now, 120)) { P.r(11, 29, 1, 1, '#ffeb3b'); P.r(14, 29, 1, 1, '#ffeb3b'); } // eyes in the window
+    P.r(20, 34, 8, 14, '#4e342e'); P.r(21, 33, 6, 1, '#4e342e'); P.r(26, 41, 1, 1, '#ffca28');
+    P.r(18, 47, 12, 1, '#8d6e63');
+  },
+];
+
+function drawBuilding(r, now) {
+  ctx.save(); ctx.translate(r.x * T - 8, r.y * T - 16);
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(1, 45, 46, 3);
+  BUILDINGS[r.idx](now);
+  // floating stop number (turns into a green tick once the room is cleared)
+  const sy = -16 + Math.round(Math.sin(now / 350 + r.idx));
+  P.r(17, sy, 14, 12, '#000'); P.r(18, sy + 1, 12, 10, r.cleared ? '#2fbf71' : ROOMS[r.idx].accent === '#ffffff' ? '#ffd600' : ROOMS[r.idx].accent);
+  ctx.fillStyle = r.cleared ? '#fff' : '#1b1530'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(r.cleared ? '✓' : String(r.idx + 1), 24, sy + 6.5);
   ctx.restore();
 }
 
-function drawHouse() {
-  const ox = GOAL.x * T, oy = GOAL.y * T;
-  ctx.save(); ctx.translate(ox, oy);
-  ctx.fillStyle = '#f3d9a4'; ctx.fillRect(-4, 4, 40, 28);
-  ctx.fillStyle = '#d9b77a'; for (let i = 0; i < 4; i++) ctx.fillRect(-4, 8 + i * 7, 40, 1);
-  ctx.fillStyle = '#5d2a12'; ctx.beginPath(); ctx.moveTo(-9, 6); ctx.lineTo(16, -18); ctx.lineTo(41, 6); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#c0392b'; ctx.beginPath(); ctx.moveTo(-5, 4); ctx.lineTo(16, -14); ctx.lineTo(37, 4); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#7b3f1d'; ctx.fillRect(11, 16, 10, 16); ctx.fillStyle = '#ffd54a'; ctx.fillRect(18, 24, 2, 2);
-  ctx.fillStyle = '#6ec6ff'; ctx.fillRect(-1, 12, 8, 7); ctx.fillRect(25, 12, 8, 7);
-  ctx.fillStyle = '#fff'; ctx.fillRect(2, 12, 1, 7); ctx.fillRect(28, 12, 1, 7);
-  ctx.fillStyle = '#ff8fb1'; ctx.fillRect(10, -4, 12, 4); ctx.fillStyle = '#1b1530'; ctx.font = 'bold 4px monospace'; ctx.textAlign = 'center'; ctx.fillText('GRANDMA', 16, -1);
+// The REAL Grandma's house: bright, warm and welcoming
+function drawHouse(now) {
+  ctx.save(); ctx.translate(GOAL.x * T - 8, GOAL.y * T - 16);
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(1, 45, 46, 3);
+  P.r(6, 22, 36, 26, '#fff3d6'); P.r(6, 22, 36, 2, '#f0d9a8'); for (let i = 0; i < 3; i++) P.r(6, 29 + i * 6, 36, 1, '#f0d9a8');
+  P.r(33, 5, 5, 12, '#a1887f');
+  P.tri(1, 24, 24, 4, 47, 24, '#b71c1c'); P.tri(5, 23, 24, 7, 43, 23, '#e74c3c');
+  P.circ(24, 15, 3, '#ff8fb1'); P.circ(22, 14, 1.6, '#ff4f81'); P.circ(26, 14, 1.6, '#ff4f81'); P.tri(20.5, 14.5, 27.5, 14.5, 24, 18.5, '#ff4f81'); // heart
+  for (const wx of [10, 30]) { P.r(wx, 26, 8, 6, '#ffe082'); P.r(wx + 3, 26, 1, 6, '#fff'); P.r(wx, 28, 8, 1, '#fff'); P.r(wx - 1, 32, 10, 2, '#8d6e63'); P.r(wx, 31, 2, 1, '#ff8fb1'); P.r(wx + 4, 31, 2, 1, '#fff176'); }
+  P.r(20, 34, 8, 14, '#8d5524'); P.r(21, 33, 6, 1, '#8d5524'); P.r(26, 41, 1, 1, '#ffd54a'); P.r(22, 37, 4, 3, '#ff8fb1');
+  P.r(10, 0, 28, 6, '#ff8fb1'); P.r(10, 0, 28, 1, '#ffc1d6'); P.txt('GRANDMA', 24, 3, '#6a1b3a', 3);
   ctx.restore();
 }
 
@@ -555,14 +680,15 @@ function frame(now) {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(mapCanvas, 0, 0);
 
-  rooms.forEach((r) => drawGate(r, now));
-  drawHouse();
+  ctx.imageSmoothingEnabled = true;
+  rooms.forEach((r) => drawBuilding(r, now));
+  drawHouse(now);
 
   // y-sorted sprites
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   const sprites = [];
   rooms.forEach((r) => {
-    if (!r.cleared) sprites.push({ y: r.y, draw: () => { const bob = Math.sin(now / 400 + r.idx) * 0.6; shadow(r.x * T + 16, r.y * T + 29, 8); drawSprite(IMG[ROOMS[r.idx].img], r.x * T + 16, r.y * T + 30 + bob, 40); } });
+    if (!r.cleared) sprites.push({ y: r.y, draw: () => { const bob = Math.sin(now / 400 + r.idx) * 0.6; shadow(r.x * T + 16, r.y * T + 29, 8); drawSprite(IMG[ROOMS[r.idx].img], r.x * T + 16, r.y * T + 31 + bob, 28); } });
     else if (r.poof && now - r.poof < 700) sprites.push({ y: r.y, draw: () => drawPoof(r, now) });
   });
   sprites.push({ y: GOAL.y + 0.1, draw: () => { shadow(GOAL.x * T + 26, GOAL.y * T + 30, 6); drawSprite(IMG.grandma, GOAL.x * T + 26, GOAL.y * T + 31, 30); } });
