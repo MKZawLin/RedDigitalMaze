@@ -1,0 +1,5 @@
+# Only the game itself goes to GitHub (this is what Vercel deploys).
+# Reference images, question CSVs and local tooling stay on this computer.
+/*
+!/game/
+!/.gitignore
