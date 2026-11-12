@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Red's Digital Maze</title>
+<meta name="description" content="A 2D pixel-art maze game that teaches players how to spot digital scams and online dangers.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="world" aria-label="Maze"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-chip wallet" id="wallet">
+    <span class="coin"></span><span class="lbl">SGD</span><span id="walletAmt">2,000</span>
+    <span id="walletDelta" class="delta"></span>
+  </div>
+  <div class="hud-chip progress">
+    <span class="lbl">ROOMS</span>
+    <div id="dots" class="dots"></div>
+  </div>
+  <div class="hud-chip next" id="nextInfo">Next: Room 1</div>
+  <button class="hud-btn" id="muteBtn" title="Sound on/off" aria-label="Toggle sound">♪</button>
+</div>
+
+<!-- On-screen arrow keys -->
+<div id="dpad" class="hidden" aria-label="Movement controls">
+  <button data-dir="up" aria-label="North">▲</button>
+  <button data-dir="left" aria-label="West">◀</button>
+  <button data-dir="right" aria-label="East">▶</button>
+  <button data-dir="down" aria-label="South">▼</button>
+</div>
+
+<!-- Intro -->
+<section id="intro" class="screen">
+  <div class="panel intro-panel">
+    <h1 class="title">RED'S<br><span>DIGITAL MAZE</span></h1>
+    <div class="intro-body">
+      <div class="intro-chars">
+        <img src="assets/red.png" alt="Red the android">
+        <img src="assets/woodcutter.png" alt="The Woodcutter">
+      </div>
+      <div class="intro-text">
+        <p class="speaker">THE WOODCUTTER</p>
+        <p>Hello, <b>Red</b>! Your <b>real Grandma</b> lives at the end of the Digital Maze, and you are bringing her <b class="money">SGD <span class="start-money">2,000</span></b>.</p>
+        <p>But be careful. <b>8 wolves in disguise</b> are hiding in rooms along the path. Each one will try to scam you.</p>
+        <p>Choose wisely. Every time you get scammed, money is taken from your wallet. Only a <b>safe choice</b> lets you through a room.</p>
+        <ul class="controls">
+          <li><b>Move:</b> Arrow keys / WASD, or tap the on-screen arrows</li>
+          <li><b>Answer:</b> Click or tap a big answer button (or press 1–4)</li>
+        </ul>
+      </div>
+    </div>
+    <button class="big-btn" id="startBtn" disabled>LOADING…</button>
+  </div>
+</section>
+
+<!-- Room encounter -->
+<section id="room" class="screen hidden">
+  <div class="room-bg" id="roomBg"></div>
+  <div class="room-shade"></div>
+  <div class="room-wrap">
+    <div class="room-head">
+      <span class="room-tag" id="roomTag">ROOM 1</span>
+      <span class="room-name" id="roomName">Hospital Ward</span>
+      <span class="room-type" id="roomType">Urgency Scam</span>
+    </div>
+    <div class="room-main">
+      <div class="wolf-box"><img id="wolfImg" alt=""></div>
+      <div class="dialog">
+        <div id="roomIntro" class="bubble room-intro hidden">
+          <p class="speaker" id="introName">DOCTOR WOLF</p>
+          <p id="introGreet"></p>
+          <p class="intro-hint">Read each question carefully before you choose.</p>
+          <button class="big-btn" id="talkBtn">I'M READY ▶</button>
+        </div>
+        <div class="bubble" id="qBubble">
+          <p class="speaker" id="wolfName">DOCTOR WOLF</p>
+          <p id="questionText"></p>
+        </div>
+        <div id="answers" class="answers"></div>
+        <div id="result" class="result hidden">
+          <div class="result-head"><span id="resultIcon" class="result-icon"></span><h2 id="resultTitle"></h2></div>
+          <p id="resultLoss" class="result-loss"></p>
+          <p id="resultMsg"></p>
+          <p id="resultSafe" class="result-safe"></p>
+          <button class="big-btn" id="resultBtn">NEXT QUESTION ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Ending -->
+<section id="end" class="screen hidden">
+  <div class="panel end-panel">
+    <h1 class="title small" id="endTitle">YOU MADE IT!</h1>
+    <div class="end-top">
+      <img src="assets/grandma.png" alt="Real Grandma" class="end-grandma">
+      <div>
+        <p class="speaker">REAL GRANDMA</p>
+        <p id="endMsg"></p>
+        <div class="stars" id="stars"></div>
+      </div>
+    </div>
+    <table class="summary" id="summary"></table>
+    <details class="lessons" open>
+      <summary>Remember these scam-busting tips</summary>
+      <ul id="lessonList"></ul>
+    </details>
+    <button class="big-btn" id="againBtn">PLAY AGAIN ↻</button>
+  </div>
+</section>
+
+<!-- Game over -->
+<section id="over" class="screen hidden">
+  <div class="panel over-panel">
+    <h1 class="title small bad">OUT OF MONEY!</h1>
+    <p>The wolves scammed away all of Grandma's <b>SGD <span class="start-money">2,000</span></b>.</p>
+    <p>Scammers rush you, scare you, or promise you something too good to be true. When in doubt: <b>Stop. Check. Tell a trusted adult.</b></p>
+    <button class="big-btn" id="retryBtn">TRY AGAIN ↻</button>
+  </div>
+</section>
+
+<script src="js/questions.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
